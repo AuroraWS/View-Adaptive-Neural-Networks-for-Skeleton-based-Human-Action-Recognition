@@ -392,14 +392,14 @@ def get_raw_denoised_data():
     raw_denoised_colors = []
     frames_cnt = []
 
-    for (idx, bodies_data) in enumerate(raw_skes_data):
+    for (idx, bodies_data) in enumerate(raw_skes_data): # 遍历每一个skeleton sequence
         ske_name = bodies_data['name']
         print('Processing %s' % ske_name)
         num_bodies = len(bodies_data['data'])
 
         if num_bodies == 1:  # only 1 actor
             num_frames = bodies_data['num_frames']
-            body_data = list(bodies_data['data'].values())[0]
+            body_data = list(bodies_data['data'].values())[0] #num_frames*25*3
             joints, colors = get_one_actor_points(body_data, num_frames)
         else:  # more than 1 actor, select two main actors
             joints, colors = get_two_actors_points(bodies_data)

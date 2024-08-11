@@ -109,7 +109,7 @@ def frame_translation(skes_joints, skes_name, frames_cnt):
 def align_frames(skes_joints, frames_cnt):
     """
     Align all sequences with the same frame length.
-
+    将所有序列填充到相同的最大帧数，以便后续处理或分析。
     """
     num_skes = len(skes_joints)
     max_num_frames = frames_cnt.max()  # 300
@@ -211,7 +211,7 @@ def get_indices(performer, camera, evaluation='CS'):
         # Get indices of training data
         for train_id in train_ids:
             temp = np.where(camera == train_id)[0]  # 0-based index
-            train_indices = np.hstack((train_indices, temp)).astype(np.int)
+            train_indices = np.hstack((train_indices, temp)).astype(int)
 
     return train_indices, test_indices
 
