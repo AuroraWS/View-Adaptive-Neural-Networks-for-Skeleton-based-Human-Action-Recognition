@@ -109,7 +109,7 @@ def frame_translation(skes_joints, skes_name, frames_cnt):
 def align_frames(skes_joints, frames_cnt):
     """
     Align all sequences with the same frame length.
-    将所有序列填充到相同的最大帧数，以便后续处理或分析。
+
     """
     num_skes = len(skes_joints)
     max_num_frames = frames_cnt.max()  # 300
@@ -195,18 +195,18 @@ def get_indices(performer, camera, evaluation='CS'):
         # Get indices of test data
         for idx in test_ids:
             temp = np.where(performer == idx)[0]  # 0-based index
-            test_indices = np.hstack((test_indices, temp)).astype(np.int)
+            test_indices = np.hstack((test_indices, temp)).astype(int)
 
         # Get indices of training data
         for train_id in train_ids:
             temp = np.where(performer == train_id)[0]  # 0-based index
-            train_indices = np.hstack((train_indices, temp)).astype(np.int)
+            train_indices = np.hstack((train_indices, temp)).astype(int)
     else:  # Cross View (Camera IDs)
         train_ids = [2, 3]
         test_ids = 1
         # Get indices of test data
         temp = np.where(camera == test_ids)[0]  # 0-based index
-        test_indices = np.hstack((test_indices, temp)).astype(np.int)
+        test_indices = np.hstack((test_indices, temp)).astype(int)
 
         # Get indices of training data
         for train_id in train_ids:
@@ -217,11 +217,11 @@ def get_indices(performer, camera, evaluation='CS'):
 
 
 if __name__ == '__main__':
-    camera = np.loadtxt(camera_file, dtype=np.int)  # camera id: 1, 2, 3
-    performer = np.loadtxt(performer_file, dtype=np.int)  # subject id: 1~40
-    label = np.loadtxt(label_file, dtype=np.int) - 1  # action label: 0~59
+    camera = np.loadtxt(camera_file, dtype=int)  # camera id: 1, 2, 3
+    performer = np.loadtxt(performer_file, dtype=int)  # subject id: 1~40
+    label = np.loadtxt(label_file, dtype=int) - 1  # action label: 0~59
 
-    frames_cnt = np.loadtxt(frames_file, dtype=np.int)  # frames_cnt
+    frames_cnt = np.loadtxt(frames_file, dtype=int)  # frames_cnt
     skes_name = np.loadtxt(skes_name_file, dtype=np.string_)
 
     with open(raw_skes_joints_pkl, 'rb') as fr:
@@ -232,5 +232,4 @@ if __name__ == '__main__':
     skes_joints = align_frames(skes_joints, frames_cnt)  # aligned to the same frame length
 
     evaluations = ['CS', 'CV']
-    for evaluation in evaluations:
-        split_dataset(skes_joints, label, performer, camera, evaluation, save_path)
+    split_dataset(skes_joints, label, performer, camera, 'CV', save_path)
