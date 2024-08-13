@@ -29,7 +29,8 @@ def get_raw_bodies_data(skes_path, ske_name, frames_drop_skes, frames_drop_logge
         - num_frames: the number of valid frames.
     """
     ske_file = osp.join(skes_path, ske_name + '.skeleton') # 一个skeleton file的path
-    assert osp.exists(ske_file), 'Error: Skeleton file %s not found' % ske_file
+    if not osp.exists(ske_file):
+        'Error: Skeleton file %s not found' % ske_file
     # Read all data from .skeleton file into a list (in string format)
     print('Reading data from %s' % ske_file[-29:])
     with open(ske_file, 'r') as fr:
@@ -83,8 +84,10 @@ def get_raw_bodies_data(skes_path, ske_name, frames_drop_skes, frames_drop_logge
 
 
     num_frames_drop = len(frames_drop)
-    assert num_frames_drop < num_frames, \
-        'Error: All frames data (%d) of %s is missing or lost' % (num_frames, ske_name)
+    if not (num_frames_drop < num_frames):
+        print('Error: All frames data (%d) of %s is missing or lost' % (num_frames, ske_name))
+    # 这里应该需要处理。。
+
     if num_frames_drop > 0: # 即此文件中有丢失帧， 把文件名和丢失的帧数全部写入frame.drop.log中
         frames_drop_skes[ske_name] = np.array(frames_drop, dtype=int)
         frames_drop_logger.info('{}: {} frames missed: {}\n'.format(ske_name, num_frames_drop,
@@ -128,6 +131,8 @@ def get_raw_skes_data():
         bodies_data = get_raw_bodies_data(skes_path, ske_name, frames_drop_skes, frames_drop_logger)
         raw_skes_data.append(bodies_data)
         frames_cnt[idx] = bodies_data['num_frames'] # 赋值
+        # 为了避免处理过程中有错误发生，这里把raw_skes_data这个list中的每个字典元素保存到文件里??
+
         if (idx + 1) % 1000 == 0: # idx 也是从0开始的，每处理1000个文件，打印进度信息。
             print('Processed: %.2f%% (%d / %d)' % \
                   (100.0 * (idx + 1) / num_files, idx + 1, num_files))
@@ -143,8 +148,10 @@ def get_raw_skes_data():
     with open(frames_drop_pkl, 'wb') as fw:
         pickle.dump(frames_drop_skes, fw, pickle.HIGHEST_PROTOCOL)
 
+
+
 if __name__ == '__main__':
-    save_path = './'
+    save_path = '/content/drive/Othercomputers/我的笔记本电脑/View-Adaptive-Neural-Networks-for-Skeleton-based-Human-Action-Recognition/data/ntu'
 
     skes_path = r"/content/drive/Othercomputers/我的笔记本电脑/nturgb+d_skeletons" # Dataset path
     stat_path = osp.join(save_path, 'statistics')

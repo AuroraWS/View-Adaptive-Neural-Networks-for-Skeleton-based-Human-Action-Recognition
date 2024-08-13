@@ -4,6 +4,8 @@ import argparse
 import time
 import shutil
 import os
+
+# os.environ["CUDA_VISIBLEDEVICE_S"] = '0'
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import os.path as osp
 import csv
@@ -12,9 +14,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torchvision.models as models
+from torchvision.models import resnet50
 from transform_cnn import VA
-from data_cnn import NTUDataLoaders, AverageMeter,  make_dir, get_cases, get_num_classes
+from data_cnn import NTUDataLoaders, AverageMeter, make_dir, get_cases, get_num_classes
 
 args = argparse.ArgumentParser(description='View adaptive')
 args.add_argument('--model', type=str, default='VA',
@@ -35,7 +37,7 @@ args.add_argument('-b', '--batch_size', type=int, default=32,
                   help='mini-batch size (default: 256)')
 args.add_argument('--num_classes', type=int, default=60,
                   help='the number of classes')
-args.add_argument('--case', type=int, default=0,
+args.add_argument('--case', type=int, default=1,
                   help='select which case')
 args.add_argument('--aug', type=int, default=1,
                   help='data augmentation')
@@ -47,13 +49,14 @@ args.add_argument('--train', type=int, default=1,
                   help='train or test')
 args = args.parse_args()
 
-def main(results):
 
+def main(results):
     num_classes = get_num_classes(args.dataset)
     if args.model[0:2] == 'VA':
         model = VA(num_classes)
     else:
-        model = models.resnet50(pretrained=True)
+        # model = models.resnet50(pretrained=True) ------------deprecated
+        model = resnet50(weights='ResNet50_Weights.DEFAULT')
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, num_classes)
 
@@ -73,12 +76,14 @@ def main(results):
         monitor_op = np.less
         best = np.Inf
         str_op = 'reduce'
-    if args.dataset=='NTU' or args.dataset == 'PKU':
+    if args.dataset == 'NTU' or args.dataset == 'PKU':
         scheduler = ReduceLROnPlateau(optimizer, mode=mode, factor=args.lr_factor,
-                                  patience=2, cooldown=2, verbose=True)
+                                      patience=2, cooldown=2, verbose=True)
     else:
         scheduler = ReduceLROnPlateau(optimizer, mode=mode, factor=args.lr_factor,
-                                      patience=5, cooldown=3, verbose=True)
+                                      patience=5, cooldown=3, verbose=True) # verbose-----------deprecated
+
+
 
     # Data loading
     ntu_loaders = NTUDataLoaders(args.dataset, args.case, args.aug)
@@ -137,7 +142,7 @@ def main(results):
                 print('Epoch %d: %s did not %s' % (epoch + 1, args.monitor, str_op))
                 earlystop_cnt += 1
             scheduler.step(current)
-            if args.dataset == 'NTU' or args.dataset =='PKU':
+            if args.dataset == 'NTU' or args.dataset == 'PKU':
                 if earlystop_cnt > 7:
                     print('Epoch %d: early stopping' % (epoch + 1))
                     break
@@ -160,7 +165,6 @@ def main(results):
 
 
 def train(train_loader, model, criterion, optimizer, epoch):
-
     losses = AverageMeter()
     acces = AverageMeter()
 
@@ -173,7 +177,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         else:
             output = model(inputs.cuda())
 
-        target = target.cuda(async=True)
+        target = target.cuda(non_blocking=True)
         loss = criterion(output, target)
 
         # measure accuracy and record loss
@@ -186,12 +190,11 @@ def train(train_loader, model, criterion, optimizer, epoch):
         loss.backward()
         optimizer.step()  # update parameters
 
-
         if (i + 1) % args.print_freq == 0:
             print('Epoch-{:<3d} {:3d} batches\t'
                   'loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'accu {acc.val:.3f} ({acc.avg:.3f})'.format(
-                   epoch + 1, i + 1, loss=losses, acc=acces))
+                epoch + 1, i + 1, loss=losses, acc=acces))
     return losses.avg, acces.avg
 
 
@@ -210,7 +213,7 @@ def validate(val_loader, model, criterion):
         else:
             with torch.no_grad():
                 output = model(inputs.cuda())
-        target = target.cuda(async=True)
+        target = target.cuda(non_blocking=True)
         with torch.no_grad():
             loss = criterion(output, target)
 
@@ -222,7 +225,7 @@ def validate(val_loader, model, criterion):
     return losses.avg, acces.avg
 
 
-def test(test_loader, model, checkpoint, results,path, label_path):
+def test(test_loader, model, checkpoint, results, path, label_path):
     acces = AverageMeter()
     # load learnt model that obtained best performance on validation set
     model.load_state_dict(torch.load(checkpoint)['state_dict'], strict=False)
@@ -232,7 +235,7 @@ def test(test_loader, model, checkpoint, results,path, label_path):
     preds, label = list(), list()
     t_start = time.time()
     for i, (inputs, maxmin, target) in enumerate(test_loader):
-        if args.model[0:2] =='VA':
+        if args.model[0:2] == 'VA':
 
             with torch.no_grad():
                 output, img, trans = model(inputs.cuda(), maxmin.cuda())
@@ -250,14 +253,14 @@ def test(test_loader, model, checkpoint, results,path, label_path):
     label = np.array(label)
 
     preds_label = np.argmax(preds, axis=-1)
-    total = ((label-preds_label)==0).sum()
+    total = ((label - preds_label) == 0).sum()
     total = float(total)
 
-    print("Model Accuracy:%.2f" % (total / len(label)*100))
+    print("Model Accuracy:%.2f" % (total / len(label) * 100))
 
-    results.append(round(float(total/len(label)*100),2))
-    np.savetxt(path, preds, fmt = '%f')
-    np.savetxt(label_path, label, fmt = '%f')
+    results.append(round(float(total / len(label) * 100), 2))
+    np.savetxt(path, preds, fmt='%f')
+    np.savetxt(label_path, label, fmt='%f')
 
 
 def accuracy(output, target):
@@ -278,18 +281,17 @@ def save_checkpoint(state, filename='checkpoint.pth.tar', is_best=False):
 
 if __name__ == '__main__':
     results = list()
-
-    rootdir = os.path.join('./results/VA-CNN', args.dataset, args.model)
+    base_root = '/content/drive/Othercomputers/我的笔记本电脑/View-Adaptive-Neural-Networks-for-Skeleton-based-Human-Action-Recognition'
+    va_cnn_root = base_root + '/results/VA-CNN'
+    rootdir = os.path.join(va_cnn_root, args.dataset, args.model)
     if not os.path.exists(rootdir):
         os.makedirs(rootdir)
 
     # get the number of total cases of certain dataset
-    cases = get_cases(args.dataset)
+    # cases = get_cases(args.dataset)
 
-    for case in range(cases):
-        args.case = case
-        main(results)
-    np.savetxt(rootdir + '/resuult.txt', results, fmt = '%f')
+    main(results)
+    np.savetxt(rootdir + '/result.txt', results, fmt='%f')
 
     print(results)
     print('ave:', np.array(results).mean())

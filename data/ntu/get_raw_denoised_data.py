@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 import logging
 
-root_path = './'
+root_path = '/content/drive/Othercomputers/我的笔记本电脑/View-Adaptive-Neural-Networks-for-Skeleton-based-Human-Action-Recognition/data/ntu'
 raw_data_file = osp.join(root_path, 'raw_data', 'raw_skes_data.pkl')
 save_path = osp.join(root_path, 'denoised_data')
 
@@ -226,10 +226,10 @@ def get_one_actor_points(body_data, num_frames):
     For joints, each frame contains 75 X-Y-Z coordinates.
     For colors, each frame contains 25 x 2 (X, Y) coordinates.
     """
-    joints = np.zeros((num_frames, 75), dtype=np.float32)
+    joints = np.zeros((num_frames, 150), dtype=np.float32) # 初始化150维的向量,8.13改动
     colors = np.ones((num_frames, 1, 25, 2), dtype=np.float32) * np.nan
     start, end = body_data['interval'][0], body_data['interval'][-1]
-    joints[start:end + 1] = body_data['joints'].reshape(-1, 75)
+    joints[start:end + 1,:75] = body_data['joints'].reshape(-1, 75)
     colors[start:end + 1, 0] = body_data['colors']
 
     return joints, colors
@@ -341,7 +341,7 @@ def get_two_actors_points(bodies_data):
             bodyID, actor = bodies_data[0]
             start, end = actor['interval'][0], actor['interval'][-1]
             if min(end1, end) - max(start1, start) <= 0:  # no overlap with actor1
-                joints[start:end + 1, :75] = actor['joints'].reshape(-1, 75)
+                joints[start:end + 1, :75] = actor['joints'].reshape(-1, 75) # -1表示自动计算这一维的大小
                 colors[start:end + 1, 0] = actor['colors']
                 actor1_info += '{}\t{:^8}\t{:f}\n'.format(bodyID, str([start, end]), actor['motion'])
                 # Update the interval of actor1
@@ -417,6 +417,14 @@ def get_raw_denoised_data():
                   (100.0 * (idx + 1) / num_skes, idx + 1, num_skes) + \
                   'Missing count: %d' % missing_count)
 
+    # write raw_denoised_joints.txt:
+    raw_denoised_joints_path = osp.join(save_path, 'raw_denoised_joints_info.txt')
+    with open(raw_denoised_joints_path,'w') as f:
+        for idx,joints_data in enumerate(raw_denoised_joints):
+            print(f'SkesNo {idx} (num_frames={len(joints_data)}): {len(joints_data[0])}')
+            f.write(f'SkesNo {idx} (num_frames={len(joints_data)}): {len(joints_data[0])}\n')
+
+
     raw_skes_joints_pkl = osp.join(save_path, 'raw_denoised_joints.pkl')
     with open(raw_skes_joints_pkl, 'wb') as f:
         pickle.dump(raw_denoised_joints, f, pickle.HIGHEST_PROTOCOL)
@@ -425,7 +433,7 @@ def get_raw_denoised_data():
     with open(raw_skes_colors_pkl, 'wb') as f:
         pickle.dump(raw_denoised_colors, f, pickle.HIGHEST_PROTOCOL)
 
-    frames_cnt = np.array(frames_cnt, dtype=np.int)
+    frames_cnt = np.array(frames_cnt, dtype=int)
     np.savetxt(osp.join(save_path, 'frames_cnt.txt'), frames_cnt, fmt='%d')
 
     print('Saved raw denoised positions of {} frames into {}'.format(np.sum(frames_cnt),

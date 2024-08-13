@@ -8,7 +8,7 @@ import logging
 import h5py
 from sklearn.model_selection import train_test_split
 
-root_path = './'
+root_path = '/content/drive/Othercomputers/我的笔记本电脑/View-Adaptive-Neural-Networks-for-Skeleton-based-Human-Action-Recognition/data/ntu'
 stat_path = osp.join(root_path, 'statistics')
 setup_file = osp.join(stat_path, 'setup.txt')
 camera_file = osp.join(stat_path, 'camera.txt')
@@ -21,7 +21,7 @@ denoised_path = osp.join(root_path, 'denoised_data')
 raw_skes_joints_pkl = osp.join(denoised_path, 'raw_denoised_joints.pkl')
 frames_file = osp.join(denoised_path, 'frames_cnt.txt')
 
-save_path = './'
+save_path = '/content/drive/Othercomputers/我的笔记本电脑/View-Adaptive-Neural-Networks-for-Skeleton-based-Human-Action-Recognition/data/ntu/transformed_data'
 
 
 if not osp.exists(save_path):
@@ -112,7 +112,7 @@ def align_frames(skes_joints, frames_cnt):
 
     """
     num_skes = len(skes_joints)
-    max_num_frames = frames_cnt.max()  # 300
+    max_num_frames = frames_cnt.max()  # 300?
     aligned_skes_joints = np.zeros((num_skes, max_num_frames, 150), dtype=np.float32)
 
     for idx, ske_joints in enumerate(skes_joints):
@@ -128,21 +128,26 @@ def align_frames(skes_joints, frames_cnt):
 
 
 def one_hot_vector(labels):
+    """
+    独热编码
+    paras: ndarray，
+    return： 一个二维NumPy数组labels_vector，其形状为(num_skes, 60)，其中num_skes是标签的数量，每个标签被转换为一个长度为60的向量。
+    """
     num_skes = len(labels)
-    labels_vector = np.zeros((num_skes, 60))
+    labels_vector = np.zeros((num_skes, 120))  # 改为120
     for idx, l in enumerate(labels):
         labels_vector[idx, l] = 1
 
     return labels_vector
 
 
-def split_train_val(train_indices, method='sklearn', ratio=0.05):
+def split_train_val(train_indices, method='scikit-learn', ratio=0.05):
     """
     Get validation set by splitting data randomly from training set with two methods.
     In fact, I thought these two methods are equal as they got the same performance.
 
     """
-    if method == 'sklearn':
+    if method == 'scikit-learn':
         return train_test_split(train_indices, test_size=ratio, random_state=10000)
     else:
         np.random.seed(10000)
@@ -154,20 +159,22 @@ def split_train_val(train_indices, method='sklearn', ratio=0.05):
 
 
 def split_dataset(skes_joints, label, performer, camera, evaluation, save_path):
-    train_indices, test_indices = get_indices(performer, camera, evaluation)
-    m = 'sklearn'  # 'sklearn' or 'numpy'
+    train_indices, test_indices = get_indices(performer, camera, evaluation) # test:1; train:2,3, ndarray
+    m = 'scikit-learn'  # 'scikit-learn' or 'numpy'
     # Select validation set from training set
-    train_indices, val_indices = split_train_val(train_indices, m)
+    train_indices, val_indices = split_train_val(train_indices, m) # 5%, ndarray
 
     # Save labels and num_frames for each sequence of each data set
-    train_labels = label[train_indices]
-    val_labels = label[val_indices]
+    train_labels = label[train_indices] # list：从所有的action class中花式索引出training set中的action class，这里面不包含索引了
+    val_labels = label[val_indices] # 表示所有的action class，罗列起来用于这个验证集,这里面不包含索引了,是有顺序的。
     test_labels = label[test_indices]
 
     # Save data into a .h5 file
     h5file = h5py.File(osp.join(save_path, 'NTU_%s.h5' % (evaluation)), 'w')
     # Training set
     h5file.create_dataset('x', data=skes_joints[train_indices])
+    # skes_joints[train_indices]表示所有用于training的skes(num_frames*150)
+    # 创建了一个名为'x'的数据集，并将skes_joints[train_indices]中的数据存储到这个数据集中。
     train_one_hot_labels = one_hot_vector(train_labels)
     h5file.create_dataset('y', data=train_one_hot_labels)
     # Validation set
@@ -205,31 +212,32 @@ def get_indices(performer, camera, evaluation='CS'):
         train_ids = [2, 3]
         test_ids = 1
         # Get indices of test data
-        temp = np.where(camera == test_ids)[0]  # 0-based index
+        temp = np.where(camera == test_ids)[0]  # 0-based index, camara是一个ndarray,找出camara中等于1的索引 array
         test_indices = np.hstack((test_indices, temp)).astype(int)
 
         # Get indices of training data
         for train_id in train_ids:
             temp = np.where(camera == train_id)[0]  # 0-based index
-            train_indices = np.hstack((train_indices, temp)).astype(int)
+            train_indices = np.hstack((train_indices, temp)).astype(int) # 找出camara数组中等于2、3的索引，array
 
-    return train_indices, test_indices
+    return train_indices, test_indices # ndarray
 
 
 if __name__ == '__main__':
-    camera = np.loadtxt(camera_file, dtype=int)  # camera id: 1, 2, 3
-    performer = np.loadtxt(performer_file, dtype=int)  # subject id: 1~40
-    label = np.loadtxt(label_file, dtype=int) - 1  # action label: 0~59
+    camera = np.loadtxt(camera_file, dtype=int)  # camera id: 1, 2, 3 ndarray
+    performer = np.loadtxt(performer_file, dtype=int)  # subject id: 1~106 deprecated
+    label = np.loadtxt(label_file, dtype=int) - 1  # action label: 0~120
 
     frames_cnt = np.loadtxt(frames_file, dtype=int)  # frames_cnt
-    skes_name = np.loadtxt(skes_name_file, dtype=np.string_)
+    skes_name = np.loadtxt(skes_name_file, dtype=str)
 
     with open(raw_skes_joints_pkl, 'rb') as fr:
-        skes_joints = pickle.load(fr)  # a list
+        skes_joints = pickle.load(fr)  # a list of length 113945
 
     skes_joints = seq_translation(skes_joints)
 
-    skes_joints = align_frames(skes_joints, frames_cnt)  # aligned to the same frame length
+    skes_joints = align_frames(skes_joints, frames_cnt)  # aligned to the same frame length (num_skes*num_frames*150)
 
-    evaluations = ['CS', 'CV']
+    # evaluations = ['CS', 'CV']
+    # for evaluation in evaluations:
     split_dataset(skes_joints, label, performer, camera, 'CV', save_path)
