@@ -274,15 +274,18 @@ def accuracy(output, target):
 
 
 def save_checkpoint(state, filename='checkpoint.pth.tar', is_best=False):
-    torch.save(state, filename)
+    # state：要保存的模型状态，通常是一个字典，包含模型的权重、优化器状态以及其他相关信息。
+    # filename：保存检查点的文件名
+    # is_best：一个布尔值，指示当前保存的检查点是否是模型表现最佳时的检查点。
+    torch.save(state, filename) # 用于序列化对象到磁盘的函数，通常用于保存模型的权重和其他状态信息。
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename, 'model_best.pth.tar') # 保存一份额外的拷贝以标记其为最佳模型。
 
 
 if __name__ == '__main__':
     results = list()
     base_root = '/content/drive/Othercomputers/我的笔记本电脑/View-Adaptive-Neural-Networks-for-Skeleton-based-Human-Action-Recognition'
-    va_cnn_root = base_root + '/results/VA-CNN'
+    va_cnn_root = base_root + '/results'
     rootdir = os.path.join(va_cnn_root, args.dataset, args.model)
     if not os.path.exists(rootdir):
         os.makedirs(rootdir)
