@@ -1,5 +1,4 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
+
 import os
 import h5py
 import numpy as np

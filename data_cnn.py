@@ -1,5 +1,4 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
+
 import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
