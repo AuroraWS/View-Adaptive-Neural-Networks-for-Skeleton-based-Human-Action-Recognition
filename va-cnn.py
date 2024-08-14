@@ -35,7 +35,7 @@ args.add_argument('--print_freq', '-p', type=int, default=20,
                   help='print frequency (default: 20)')
 args.add_argument('-b', '--batch_size', type=int, default=32,
                   help='mini-batch size (default: 256)')
-args.add_argument('--num_classes', type=int, default=60,
+args.add_argument('--num_classes', type=int, default=120,
                   help='the number of classes')
 args.add_argument('--case', type=int, default=1,
                   help='select which case')
